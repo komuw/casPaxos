@@ -1,0 +1,16 @@
+# Compiled Python modules
+*.pyo
+*.pyc
+
+# Ignore virtualenv
+.venv
+
+# vscode
+.vscode
+
+# ignore Static files: issues/4
+static/
+
+# celery
+*.pid
+*.log
