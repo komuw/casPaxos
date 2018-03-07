@@ -48,24 +48,27 @@ class Proposer(object):
     def send_prepare(self):
         #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
         ballot_number = self.generate_ballot_number()
-        confirmations_accepted_value = []
+        confirmations = [] # list of tuples conatining accepted (value, ballotNumOfAcceptedValue)
         for acceptor in self.acceptors:
-            accepted_value, accepted_value_ballot_number = acceptor.prepare(
-                ballot_number=ballot_number)
-            confirmations_accepted_value.append(accepted_value)
+            confirmation = acceptor.prepare(ballot_number=ballot_number)
+            confirmations.append(confirmation)
 
         # Wait for the F + 1 confirmations
         while True:
-            if len(confirmations_accepted_value) >= self.F + 1:
+            if len(confirmations) >= self.F + 1:
                 break
             else:
                 # sleep then check again
                 time.sleep(5)
         
+        total_list_of_confirmation_values = []
+        for i in confirmations:
+            total_list_of_confirmation_values.append(confirmations[0])
+
         # If they(confirmations) all contain the empty value,
         # then the proposer defines the current state as ∅ otherwise it picks the
         # value of the tuple with the highest ballot number.
-        if sum(confirmations_accepted_value):
+        if sum(total_list_of_confirmation_values) == 0:
             # we are using 0 as ∅
             self.state = 0
         else:
