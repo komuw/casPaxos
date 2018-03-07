@@ -55,14 +55,21 @@ class Proposer(object):
             confirmations_accepted_value.append(accepted_value)
 
         # Wait for the F + 1 confirmations
-        if len(confirmations_accepted_value) >= self.F + 1:
-            # If they all contain the empty value,
-            # then the proposer defines the current state as ∅ otherwise it picks the
-            # value of the tuple with the highest ballot number.
-            if sum(confirmations_accepted_value):
-                # we are using 0 as ∅
-                self.state = 0
+        while True:
+            if len(confirmations_accepted_value) >= self.F + 1:
+                break
             else:
+                # sleep then check again
+                time.sleep(5)
+        
+        # If they(confirmations) all contain the empty value,
+        # then the proposer defines the current state as ∅ otherwise it picks the
+        # value of the tuple with the highest ballot number.
+        if sum(confirmations_accepted_value):
+            # we are using 0 as ∅
+            self.state = 0
+        else:
+
 
 
 class Acceptor(object):
