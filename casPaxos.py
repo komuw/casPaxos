@@ -23,7 +23,7 @@ import logging
 
 logger = logging.getLogger()
 handler = logging.StreamHandler()
-formatter = logging.Formatter('%(message)s\n')
+formatter = logging.Formatter('%(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel('DEBUG')
@@ -59,19 +59,25 @@ class Proposer(object):
         # since we need to have 2F+1 acceptors to tolerate F failures, then:
         self.F = (len(self.acceptors) - 1) / 2
         self.state = 0
+        self.current_highest_ballot = 1
         logger.info(
-            "Init Proposer. acceptors={0}. F={1}. initial_state={2}".format(
-                self.acceptors, self.F, self.state))
+            "Init Proposer. acceptors={0}. F={1}. initial_state={2}. current_highest_ballot={3}".format(
+                self.acceptors,
+                self.F,
+                self.state,
+                self.current_highest_ballot))
 
     def receive(self, f):
         """
         receives f change function from client and begins consensus process.
         """
         #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
-        ballot_number = self.generate_ballot_number()
-        logger.info("receive. change_func={0}. ballot_number={1}.".format(f, ballot_number))
+        ballot_number = self.generate_ballot_number(notLessThan=self.current_highest_ballot)
+        logger.info("\nreceive. change_func={0}. ballot_number={1}.".format(f, ballot_number))
         self.send_prepare(ballot_number=ballot_number)
         result = self.send_accept(f, ballot_number)
+
+        self.current_highest_ballot = ballot_number
         return result
 
     def generate_ballot_number(self, notLessThan=0):
@@ -83,7 +89,7 @@ class Proposer(object):
         """
         # we should never generate a random number that is equal to zero
         # since Acceptor.promise defaults to 0
-        ballot_number = random.randint(notLessThan + 1, 100)
+        ballot_number = random.randint(notLessThan + 1, notLessThan + 3)
         return ballot_number
 
     def send_prepare(self, ballot_number):
@@ -97,21 +103,17 @@ class Proposer(object):
                 # subsequent proposal might succeed. We could try to re-submit the same
                 # request with our updated ballot number, but for now let's leave that
                 # responsibility to the caller.
-                # borrowed from: https://github.com/peterbourgon/caspaxos/blob/4374c3a816d7abd6a975e0e644782f0d03a2d05d/protocol/local_proposer.go#L148-L154
+                # borrowed from:
+                # https://github.com/peterbourgon/caspaxos/blob/4374c3a816d7abd6a975e0e644782f0d03a2d05d/protocol/local_proposer.go#L148-L154
                 pass
             else:
                 confirmations.append(confirmation)
 
         # Wait for the F + 1 confirmations
-        while True:
-            if len(confirmations) >= self.F + 1:
-                break
-            else:
-                # sleep then check again
-                logger.info(
-                    "sleep waiting for accept confirms. confirmations={0}. F={1}.".format(
-                        len(confirmations), self.F))
-                time.sleep(5)
+        if len(confirmations) < self.F + 1:
+            raise ValueError(
+                "Unable to get enough confirmations. got={0}. wanted={1}".format(
+                    len(confirmations), self.F + 1))
 
         total_list_of_confirmation_values = []
         for i in confirmations:
@@ -152,14 +154,11 @@ class Proposer(object):
             else:
                 acceptations.append(acceptation)
 
-        # Wait for the F + 1 confirmations
-        while True:
-            if len(acceptations) >= self.F + 1:
-                break
-            else:
-                # sleep then check again
-                time.sleep(5)
-
+        # Wait for the F + 1 acceptations
+        if len(acceptations) < self.F + 1:
+            raise ValueError(
+                "Unable to get enough acceptations. got={0}. wanted={1}".format(
+                    len(acceptations), self.F + 1))
         # Returns the new state to the client.
         return self.state
 
@@ -203,6 +202,11 @@ class Acceptor(object):
         8. Returns a conflict if it already saw a greater ballot number.
         9. Erases the promise, marks the received tuple (ballot number, value) as the accepted value and returns a confirmation
         """
+        # # induce failure
+        # if self.name in ['a1', 'a2', 'a3']:
+        #     self.promise = 1000
+        # if self.name in ['a1']:
+        #     import pdb;pdb.set_trace()
         logger.info("accept. name={0}. ballot_number={1}. new_state={2}. promise={3}. accepted={4}".format(
             self.name, ballot_number, new_state, self.promise, self.accepted))
         if self.promise > ballot_number:
@@ -239,17 +243,22 @@ def change_func(state):
     """
     return state + 3
 
+
 def read_func(state):
     return state
+
 
 def set_func(state):
     return state + 3
 
+
 acceptorsList = [a1, a2, a3, a4, a5]
 p = Proposer(acceptors=acceptorsList)
-result = p.receive(change_func)
 
-print "result::", result
-
-for acceptor in acceptorsList:
-    print "acceptor accepted", acceptor.accepted
+print "\n#############################"
+for i in range(1, 100):
+    if (i % 2) == 0:
+        result = p.receive(read_func)
+    else:
+        result = p.receive(set_func)
+    print "result2", result
