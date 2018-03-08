@@ -44,6 +44,12 @@ class Proposer(object):
         self.F = (self.acceptors - 1) / 2
         self.state = 0
 
+    def receive(self, value):
+        """
+        receives request from client and begins consensus process.
+        """
+        self.send_prepare()
+
     def generate_ballot_number(self, notLessThan=0):
         # we should never generate a random number that is equal to zero
         # since Acceptor.promise defaults to 0
@@ -95,9 +101,6 @@ class Proposer(object):
             if i[1] == highestBallot:
                 return i
 
-        # Returns the new state to the client.
-        return self.state
-
     def send_accept(self, f, ballot_number):
         """
         7. Applies the f function to the current state and sends the result, new state, along with the generated ballot number B (an ”accept” message) to the acceptors.
@@ -119,6 +122,9 @@ class Proposer(object):
             else:
                 # sleep then check again
                 time.sleep(5)
+
+        # Returns the new state to the client.
+        return self.state
 
 
 class Acceptor(object):
