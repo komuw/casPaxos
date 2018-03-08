@@ -207,6 +207,10 @@ class Acceptor(object):
             self.name, ballot_number, new_state, self.promise, self.accepted))
         if self.promise > ballot_number:
             return ("CONFLICT", "CONFLICT")
+        elif self.accepted[1] > ballot_number:
+            # https://github.com/peterbourgon/caspaxos/blob/4374c3a816d7abd6a975e0e644782f0d03a2d05d/protocol/memory_acceptor.go#L118-L128
+            return ("CONFLICT", "CONFLICT")
+
         self.promise = 0
         self.accepted = (new_state, ballot_number)
         return ("CONFIRM", "CONFIRM")
