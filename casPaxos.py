@@ -16,6 +16,15 @@
 
 import time
 import random
+import logging
+
+
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(message)s\n')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel('DEBUG')
 
 
 class Client(object):
@@ -48,6 +57,9 @@ class Proposer(object):
         # since we need to have 2F+1 acceptors to tolerate F failures, then:
         self.F = (len(self.acceptors) - 1) / 2
         self.state = 0
+        logger.info(
+            "Init Proposer. acceptors={0}. F={1}. initial_state={2}".format(
+                self.acceptors, self.F, self.state))
 
     def receive(self, f):
         """
@@ -55,8 +67,10 @@ class Proposer(object):
         """
         #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
         ballot_number = self.generate_ballot_number()
+        logger.info("receive. change_func={0}. ballot_number={1}.".format(f, ballot_number))
         self.send_prepare(ballot_number=ballot_number)
         result = self.send_accept(f, ballot_number)
+        return result
 
     def generate_ballot_number(self, notLessThan=0):
         # we should never generate a random number that is equal to zero
@@ -80,11 +94,14 @@ class Proposer(object):
                 break
             else:
                 # sleep then check again
+                logger.info(
+                    "sleep waiting for accept confirms. confirmations={0}. F={1}.".format(
+                        len(confirmations), self.F))
                 time.sleep(5)
 
         total_list_of_confirmation_values = []
         for i in confirmations:
-            total_list_of_confirmation_values.append(confirmations[0])
+            total_list_of_confirmation_values.append(i[0])
 
         # If they(confirmations) all contain the empty value,
         # then the proposer defines the current state as PHI otherwise it picks the
@@ -148,6 +165,9 @@ class Acceptor(object):
     promise = 0  # ballot number
     accepted = (0, 0)
 
+    def __init__(self, name):
+        self.name = name
+
     def prepare(self, ballot_number):
         """
         3. Returns a conflict if it already saw a greater ballot number.
@@ -157,6 +177,8 @@ class Acceptor(object):
         or
         with a tuple of an accepted value and its ballot number.
         """
+        logger.info("prepare. name={0}. ballot_number={1}. promise={2}. accepted={3}".format(
+            self.name, ballot_number, self.promise, self.accepted))
         if self.promise > ballot_number:
             return ("CONFLICT", "CONFLICT")
         self.promise = ballot_number
@@ -167,6 +189,8 @@ class Acceptor(object):
         8. Returns a conflict if it already saw a greater ballot number.
         9. Erases the promise, marks the received tuple (ballot number, value) as the accepted value and returns a confirmation
         """
+        logger.info("accept. name={0}. ballot_number={1}. new_state={2}. promise={3}. accepted={4}".format(
+            self.name, ballot_number, new_state, self.promise, self.accepted))
         if self.promise > ballot_number:
             return ("CONFLICT", "CONFLICT")
         self.promise = 0
@@ -174,18 +198,22 @@ class Acceptor(object):
         return ("CONFIRM", "CONFIRM")
 
 
-a1 = Acceptor()
-a2 = Acceptor()
-a3 = Acceptor()
-a4 = Acceptor()
-a5 = Acceptor()
+a1 = Acceptor(name='a1')
+a2 = Acceptor(name='a2')
+a3 = Acceptor(name='a3')
+a4 = Acceptor(name='a4')
+a5 = Acceptor(name='a5')
 
 
 def change_func(state):
     return state + 3
 
 
-p = Proposer(acceptors=[a1, a2, a3, a4])
+acceptorsList = [a1, a2, a3, a4]
+p = Proposer(acceptors=acceptorsList)
 result = p.receive(change_func)
 
 print "result::", result
+
+for acceptor in acceptorsList:
+    print "acceptor accepted", acceptor.accepted
