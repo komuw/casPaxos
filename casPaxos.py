@@ -6,6 +6,7 @@
 # More docs:
 # 1. https://www.youtube.com/watch?v=SRsK-ZXTeZ0 # Paxos Simplified
 # 2. https://www.youtube.com/watch?v=d7nAGI_NZPk # Google tech talks, The Paxos Algorithm
+# 3. http://rystsov.info/2015/09/16/how-paxos-works.html
 
 
 # Number of failures we can tolerate, F
@@ -206,8 +207,26 @@ a5 = Acceptor(name='a5')
 
 
 def change_func(state):
+    """
+    http://rystsov.info/2015/09/16/how-paxos-works.html
+    It's a common practice for storages to have write operations to mutate its state and read operations to query it.
+    Paxos is different, it guarantees consistency only for write operations,
+    so to query/read its state the system makes read, writes the state back and when the state change is accepted the system queries the written state.
+
+    ie:
+    It's impossible to read a value in Single Decree Paxos without modifying the state of the system.
+    For example if you connect only to one acceptor then you may get stale read.
+    If you connect to a quorum of the acceptors then each acceptor may return a different value, so you should pick a value with the largest ballot number and send it back to acceptors.
+    Once you get a confirmation of the successful write then you can return the written value to the client as the current value.
+    So in order to read you should write.
+    """
     return state + 3
 
+def read_func(state):
+    return state
+
+def set_func(state):
+    return state + 3
 
 acceptorsList = [a1, a2, a3, a4, a5]
 p = Proposer(acceptors=acceptorsList)
