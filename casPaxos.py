@@ -209,7 +209,7 @@ def change_func(state):
     return state + 3
 
 
-acceptorsList = [a1, a2, a3, a4]
+acceptorsList = [a1, a2, a3, a4, a5]
 p = Proposer(acceptors=acceptorsList)
 result = p.receive(change_func)
 
