@@ -36,7 +36,7 @@ class Client(object):
     pass
 
 
-class Proposer(object):
+class ProposerAcceptor(object):
     """
     2. The proposer generates a ballot number, B, and sends "prepare" messages containing that number
     to the acceptors.
@@ -49,23 +49,35 @@ class Proposer(object):
     11. Returns the new state to the client.
     """
 
-    def __init__(self, acceptors):
+    def __init__(self, name):
+        # TODO: note that a node can be both a proposer and an acceptor at the same time
+        # in fact most times they usually are.
+        # So we should add logic to handle that fact.
+
+        self.name = name
+        self.state = 0
+        self.current_highest_ballot = 1
+
+        self.promise = 0  # ballot number
+        self.accepted = (0, 0)
+        logger.info(
+            "Init Proposer. initial_state={0}. current_highest_ballot={1}. name={2}".format(
+                self.state,
+                self.current_highest_ballot, self.name))
+
+    def set_acceptors(self, acceptors=None):
         # TODO: note that a node can be both a proposer and an acceptor at the same time
         # in fact most times they usually are.
         # So we should add logic to handle that fact.
         if not isinstance(acceptors, list):
             raise ValueError("acceptors ought to be a list of child classes of Acceptor object")
+        acceptors.append(self)
         self.acceptors = acceptors
         # since we need to have 2F+1 acceptors to tolerate F failures, then:
         self.F = (len(self.acceptors) - 1) / 2
-        self.state = 0
-        self.current_highest_ballot = 1
         logger.info(
-            "Init Proposer. acceptors={0}. F={1}. initial_state={2}. current_highest_ballot={3}".format(
-                self.acceptors,
-                self.F,
-                self.state,
-                self.current_highest_ballot))
+            "set_acceptors. acceptors={0}. F={1}. name={2}".format(
+                self.acceptors, self.F, self.name))
 
     def receive(self, f):
         """
@@ -73,7 +85,9 @@ class Proposer(object):
         """
         #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
         ballot_number = self.generate_ballot_number(notLessThan=self.current_highest_ballot)
-        logger.info("\nreceive. change_func={0}. ballot_number={1}.".format(f, ballot_number))
+        logger.info(
+            "\nreceive. change_func={0}. ballot_number={1}. name={2}".format(
+                f, ballot_number, self.name))
         self.send_prepare(ballot_number=ballot_number)
         result = self.send_accept(f, ballot_number)
 
@@ -162,25 +176,6 @@ class Proposer(object):
         # Returns the new state to the client.
         return self.state
 
-
-class Acceptor(object):
-    """
-    3. Returns a conflict if it already saw a greater ballot number.
-    else
-    4. Persists the ballot number as a promise and returns a confirmation either;
-    with an empty value (if it hasn't accepted any value yet)
-    or
-    with a tuple of an accepted value and its ballot number.
-
-    8. Returns a conflict if it already saw a greater ballot number.
-    9. Erases the promise, marks the received tuple (ballot number, value) as the accepted value and returns a confirmation
-    """
-    promise = 0  # ballot number
-    accepted = (0, 0)
-
-    def __init__(self, name):
-        self.name = name
-
     def prepare(self, ballot_number):
         """
         3. Returns a conflict if it already saw a greater ballot number.
@@ -220,11 +215,13 @@ class Acceptor(object):
         return ("CONFIRM", "CONFIRM")
 
 
-a1 = Acceptor(name='a1')
-a2 = Acceptor(name='a2')
-a3 = Acceptor(name='a3')
-a4 = Acceptor(name='a4')
-a5 = Acceptor(name='a5')
+a1 = ProposerAcceptor(name='a1')
+a2 = ProposerAcceptor(name='a2')
+a3 = ProposerAcceptor(name='a3')
+
+a1.set_acceptors(acceptors=[a2, a3])
+a2.set_acceptors(acceptors=[a1, a3])
+a3.set_acceptors(acceptors=[a1, a2])
 
 
 def change_func(state):
@@ -252,13 +249,14 @@ def set_func(state):
     return state + 3
 
 
-acceptorsList = [a1, a2, a3, a4, a5]
-p = Proposer(acceptors=acceptorsList)
-
+# acceptorsList = [a1, a2, a3, a4, a5]
+# p = a1(acceptors=acceptorsList)
+result = a1.receive(set_func)
+print "result2", result
 print "\n#############################"
-for i in range(1, 100):
-    if (i % 2) == 0:
-        result = p.receive(read_func)
-    else:
-        result = p.receive(set_func)
-    print "result2", result
+# for i in range(1, 100):
+#     if (i % 2) == 0:
+#         result = p.receive(read_func)
+#     else:
+#         result = p.receive(set_func)
+#     print "result2", result
