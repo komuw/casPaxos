@@ -39,6 +39,9 @@ class Proposer(object):
     """
 
     def __init__(self, acceptors):
+        # TODO: note that a node can be both a proposer and an acceptor at the same time
+        # in fact most times they usually are.
+        # So we should add logic to handle that fact.
         if not isinstance(acceptors, list):
             raise ValueError("acceptors ought to be a list of child classes of Acceptor object")
         self.acceptors = acceptors
