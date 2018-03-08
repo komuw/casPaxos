@@ -238,6 +238,14 @@ def change_func(state):
     If you connect to a quorum of the acceptors then each acceptor may return a different value, so you should pick a value with the largest ballot number and send it back to acceptors.
     Once you get a confirmation of the successful write then you can return the written value to the client as the current value.
     So in order to read you should write.
+    
+    ie:
+    https://twitter.com/rystsov/status/971796687642550277
+    There is no native read or write operations in CASPaxos, the only primitive is change:
+    apply a function to the stored value and return an updated value to a client.
+    If the function is "lambda x: x" we get a read, if it's "lambda x: x+1" then it's increment
+    and the "lambda x: f(x) if p(x) else x" is conditional write. 
+    So from this perspective there reads are almost indistinguishable from writes.
     """
     return state + 3
 
