@@ -8,6 +8,8 @@
 # 2. https://www.youtube.com/watch?v=d7nAGI_NZPk # Google tech talks, The Paxos Algorithm
 # 3. http://rystsov.info/2015/09/16/how-paxos-works.html
 # 4. https://github.com/peterbourgon/caspaxos
+# 5. https://twitter.com/komu_wairagu/status/971731937697071104
+# 6. https://twitter.com/komu_wairagu/status/971733628408467457
 
 
 # Number of failures we can tolerate, F
