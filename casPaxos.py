@@ -7,6 +7,7 @@
 # 1. https://www.youtube.com/watch?v=SRsK-ZXTeZ0 # Paxos Simplified
 # 2. https://www.youtube.com/watch?v=d7nAGI_NZPk # Google tech talks, The Paxos Algorithm
 # 3. http://rystsov.info/2015/09/16/how-paxos-works.html
+# 4. https://github.com/peterbourgon/caspaxos
 
 
 # Number of failures we can tolerate, F
@@ -74,6 +75,12 @@ class Proposer(object):
         return result
 
     def generate_ballot_number(self, notLessThan=0):
+        """
+        http://rystsov.info/2015/09/16/how-paxos-works.html
+        Each server may have unique ID and use an increasing sequence of natural number n to generate (n,ID) tuples and use tuples as ballot numbers.
+        To compare them we start by comparing the first element from each tuple. If they are equal, we use the second component of the tuple (ID) as a tie breaker.
+        Let IDs of two servers are 0 and 1 then two sequences they generate are (0,0),(1,0),(2,0),(3,0).. and (0,1),(1,1),(2,1),(3,1).. Obviously they are unique, ordered and for any element in one we always can peak an greater element from another.
+        """
         # we should never generate a random number that is equal to zero
         # since Acceptor.promise defaults to 0
         ballot_number = random.randint(notLessThan + 1, 100)
@@ -85,6 +92,12 @@ class Proposer(object):
             confirmation = acceptor.prepare(ballot_number=ballot_number)
             if confirmation[0] == "CONFLICT":
                 # CONFLICT, do something
+                # We should fast-forward our ballot number's counter to
+                # the highest number we saw from the conflicted preparers, so a
+                # subsequent proposal might succeed. We could try to re-submit the same
+                # request with our updated ballot number, but for now let's leave that
+                # responsibility to the caller.
+                # borrowed from: https://github.com/peterbourgon/caspaxos/blob/4374c3a816d7abd6a975e0e644782f0d03a2d05d/protocol/local_proposer.go#L148-L154
                 pass
             else:
                 confirmations.append(confirmation)
