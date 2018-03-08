@@ -3,6 +3,10 @@
 # February 28, 2018
 # https://arxiv.org/pdf/1802.07000.pdf
 
+# More docs:
+# 1. https://www.youtube.com/watch?v=SRsK-ZXTeZ0 # Paxos Simplified
+# 2. https://www.youtube.com/watch?v=d7nAGI_NZPk # Google tech talks, The Paxos Algorithm
+
 
 # Number of failures we can tolerate, F
 # Number of nodes needed to tolerate F, failures is 2F+1
