@@ -27,26 +27,28 @@ class Client(object):
 
 class Proposer(object):
     """
-    2. The proposer generates a ballot number, B, and sends ”prepare” messages containing that number
+    2. The proposer generates a ballot number, B, and sends "prepare" messages containing that number
     to the acceptors.
 
     5. Waits for the F + 1 confirmations
-    6. If they all contain the empty value, then the proposer defines the current state as ∅ otherwise it picks the value of the tuple with the highest ballot number.
-    7. Applies the f function to the current state and sends the result, new state, along with the generated ballot number B (an ”accept” message) to the acceptors.
+    6. If they all contain the empty value, then the proposer defines the current state as PHI otherwise it picks the value of the tuple with the highest ballot number.
+    7. Applies the f function to the current state and sends the result, new state, along with the generated ballot number B (an "accept" message) to the acceptors.
 
     10. Waits for the F + 1 confirmations.
     11. Returns the new state to the client.
     """
 
     def __init__(self, acceptors):
+        if not isinstance(acceptors, list):
+            raise ValueError("acceptors ought to be a list of child classes of Acceptor object")
         self.acceptors = acceptors
         # since we need to have 2F+1 acceptors to tolerate F failures, then:
-        self.F = (self.acceptors - 1) / 2
+        self.F = (len(self.acceptors) - 1) / 2
         self.state = 0
 
-    def receive(self, value, f):
+    def receive(self, f):
         """
-        receives request from client and begins consensus process.
+        receives f change function from client and begins consensus process.
         """
         #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
         ballot_number = self.generate_ballot_number()
@@ -82,10 +84,10 @@ class Proposer(object):
             total_list_of_confirmation_values.append(confirmations[0])
 
         # If they(confirmations) all contain the empty value,
-        # then the proposer defines the current state as ∅ otherwise it picks the
+        # then the proposer defines the current state as PHI otherwise it picks the
         # value of the tuple with the highest ballot number.
         if sum(total_list_of_confirmation_values) == 0:
-            # we are using 0 as ∅
+            # we are using 0 as PHI
             self.state = 0
         else:
             highest_confirmation = self.get_highest_confirmation(confirmations)
@@ -104,7 +106,7 @@ class Proposer(object):
 
     def send_accept(self, f, ballot_number):
         """
-        7. Applies the f function to the current state and sends the result, new state, along with the generated ballot number B (an ”accept” message) to the acceptors.
+        7. Applies the f function to the current state and sends the result, new state, along with the generated ballot number B (an "accept" message) to the acceptors.
         """
         self.state = f(self.state)
         acceptations = []
@@ -133,7 +135,7 @@ class Acceptor(object):
     3. Returns a conflict if it already saw a greater ballot number.
     else
     4. Persists the ballot number as a promise and returns a confirmation either;
-    with an empty value (if it hasn’t accepted any value yet)
+    with an empty value (if it hasn't accepted any value yet)
     or
     with a tuple of an accepted value and its ballot number.
 
@@ -148,7 +150,7 @@ class Acceptor(object):
         3. Returns a conflict if it already saw a greater ballot number.
         else
         4. Persists the ballot number as a promise and returns a confirmation either;
-        with an empty value (if it hasn’t accepted any value yet)
+        with an empty value (if it hasn't accepted any value yet)
         or
         with a tuple of an accepted value and its ballot number.
         """
@@ -167,3 +169,20 @@ class Acceptor(object):
         self.promise = 0
         self.accepted = (new_state, ballot_number)
         return ("CONFIRM", "CONFIRM")
+
+
+a1 = Acceptor()
+a2 = Acceptor()
+a3 = Acceptor()
+a4 = Acceptor()
+a5 = Acceptor()
+
+
+def change_func(state):
+    return state + 3
+
+
+p = Proposer(acceptors=[a1, a2, a3, a4])
+result = p.receive(change_func)
+
+print "result::", result
