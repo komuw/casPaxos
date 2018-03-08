@@ -10,6 +10,7 @@
 # specifically we are talking about 2F+1 acceptors.
 # NB:: A node can be both an acceptor and a proposer.
 
+import time
 import random
 
 
@@ -48,10 +49,14 @@ class Proposer(object):
     def send_prepare(self):
         #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
         ballot_number = self.generate_ballot_number()
-        confirmations = [] # list of tuples conatining accepted (value, ballotNumOfAcceptedValue)
+        confirmations = []  # list of tuples conatining accepted (value, ballotNumOfAcceptedValue)
         for acceptor in self.acceptors:
             confirmation = acceptor.prepare(ballot_number=ballot_number)
-            confirmations.append(confirmation)
+            if confirmation[0] == "CONFLICT":
+                # CONFLICT, do something
+                pass
+            else:
+                confirmations.append(confirmation)
 
         # Wait for the F + 1 confirmations
         while True:
@@ -60,7 +65,7 @@ class Proposer(object):
             else:
                 # sleep then check again
                 time.sleep(5)
-        
+
         total_list_of_confirmation_values = []
         for i in confirmations:
             total_list_of_confirmation_values.append(confirmations[0])
@@ -72,7 +77,44 @@ class Proposer(object):
             # we are using 0 as ∅
             self.state = 0
         else:
+            highest_confirmation = self.get_highest_confirmation(confirmations)
+            self.state = highest_confirmation[0]
 
+    def get_highest_confirmation(self, confirmations):
+        ballots = []
+        for i in confirmations:
+            ballots.append(i[1])
+        ballots = sorted(ballots)
+        highestBallot = ballots[len(ballots) - 1]
+
+        for i in confirmations:
+            if i[1] == highestBallot:
+                return i
+
+        # Returns the new state to the client.
+        return self.state
+
+    def send_accept(self, f, ballot_number):
+        """
+        7. Applies the f function to the current state and sends the result, new state, along with the generated ballot number B (an ”accept” message) to the acceptors.
+        """
+        self.state = f(self.state)
+        acceptations = []
+        for acceptor in self.acceptors:
+            acceptation = acceptor.accept(ballot_number=ballot_number, new_state=self.state)
+            if acceptation[0] == "CONFLICT":
+                # CONFLICT, do something
+                pass
+            else:
+                acceptations.append(acceptation)
+
+        # Wait for the F + 1 confirmations
+        while True:
+            if len(acceptations) >= self.F + 1:
+                break
+            else:
+                # sleep then check again
+                time.sleep(5)
 
 
 class Acceptor(object):
@@ -100,6 +142,17 @@ class Acceptor(object):
         with a tuple of an accepted value and its ballot number.
         """
         if self.promise > ballot_number:
-            return "CONFLICT"
+            return ("CONFLICT", "CONFLICT")
         self.promise = ballot_number
         return self.accepted
+
+    def accept(self, ballot_number, new_state):
+        """
+        8. Returns a conflict if it already saw a greater ballot number.
+        9. Erases the promise, marks the received tuple (ballot number, value) as the accepted value and returns a confirmation
+        """
+        if self.promise > ballot_number:
+            return ("CONFLICT", "CONFLICT")
+        self.promise = 0
+        self.accepted = (new_state, ballot_number)
+        return ("CONFIRM", "CONFIRM")
