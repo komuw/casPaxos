@@ -44,11 +44,14 @@ class Proposer(object):
         self.F = (self.acceptors - 1) / 2
         self.state = 0
 
-    def receive(self, value):
+    def receive(self, value, f):
         """
         receives request from client and begins consensus process.
         """
-        self.send_prepare()
+        #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
+        ballot_number = self.generate_ballot_number()
+        self.send_prepare(ballot_number=ballot_number)
+        result = self.send_accept(f, ballot_number)
 
     def generate_ballot_number(self, notLessThan=0):
         # we should never generate a random number that is equal to zero
@@ -56,9 +59,7 @@ class Proposer(object):
         ballot_number = random.randint(notLessThan + 1, 100)
         return ballot_number
 
-    def send_prepare(self):
-        #  Generate ballot number, B and sends 'prepare' msg with that number to the acceptors.
-        ballot_number = self.generate_ballot_number()
+    def send_prepare(self, ballot_number):
         confirmations = []  # list of tuples conatining accepted (value, ballotNumOfAcceptedValue)
         for acceptor in self.acceptors:
             confirmation = acceptor.prepare(ballot_number=ballot_number)
