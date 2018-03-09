@@ -197,6 +197,8 @@ class Acceptor(object):
             self.name, ballot_number, self.promise, self.accepted))
         if self.promise > ballot_number:
             return ("CONFLICT", "CONFLICT")
+  
+        # this ought to be flushed to disk
         self.promise = ballot_number
         return self.accepted
 
@@ -213,6 +215,8 @@ class Acceptor(object):
             # https://github.com/peterbourgon/caspaxos/blob/4374c3a816d7abd6a975e0e644782f0d03a2d05d/protocol/memory_acceptor.go#L118-L128
             return ("CONFLICT", "CONFLICT")
 
+        # these two ought to be flushed to disk
+        # http://rystsov.info/2015/09/16/how-paxos-works.html
         self.promise = 0
         self.accepted = (new_state, ballot_number)
         return ("CONFIRM", "CONFIRM")
