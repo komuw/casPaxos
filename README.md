@@ -1,9 +1,6 @@
-# TODO
+# casPaxos
 
-flesh out readme.           
+This is a prototype implementation of the [CAS paxos consensus algorith](https://github.com/rystsov/caspaxos/blob/master/latex/caspaxos.pdf)                        
 
-
-
-pip install -r requirements.txt                
-autopep8 --experimental --in-place -r -aaaaaaaaaaaaaaaaaaaaaaaaa .             
-pylint --enable=E --disable=W,R,C casPaxos.py
+This prototype was just to put down my idea in code;                                      
+I am now implememnting the real deal over there -> https://github.com/komuw/kshaka                    
